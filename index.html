@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classic Snake</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            touch-action: none;
+            overflow: hidden;
+            background-color: #111827; /* gray-900 */
+            color: white;
+            -webkit-user-select: none; /* Safari */
+            -ms-user-select: none; /* IE 10+ */
+            user-select: none; /* Standard syntax */
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 5px; 
+        }
+        .game-board {
+            border: 8px solid #374151; 
+            background-color: #d1d5db; 
+            display: grid;
+            position: relative;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3); 
+            border-radius: 6px; 
+        }
+
+        /* Snake Styling */
+        .snake-segment-container { 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: visible; 
+        }
+        .snake-visual { 
+            width: 90%; 
+            height: 90%;
+            background-color: #10b981; 
+            position: relative; 
+        }
+        .snake-head .snake-visual {
+            background-color: #059669; 
+        }
+        .snake-body .snake-visual {
+            border-radius: 30%; 
+        }
+        .snake-tail .snake-visual {
+            width: 70%;
+            height: 70%;
+            background-color: #34d399; 
+        }
+        .snake-eye {
+            position: absolute;
+            width: 20%;
+            height: 20%;
+            background-color: white;
+            border-radius: 50%;
+            border: 1px solid #333;
+        }
+        
+        .food {
+            text-align: center;
+            user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Start Screen & Settings Overlay */
+        .overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(17, 24, 39, 0.95);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 200; opacity: 0; visibility: hidden; 
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+        .overlay.active { 
+            opacity: 1;
+            visibility: visible;
+        }
+        .overlay-content { text-align: center; padding: 20px; }
+        .overlay-title { 
+            font-size: 1.8rem; /* Base size */
+            sm:font-size: 2.0rem; 
+            md:font-size: 2.2rem; 
+            margin-bottom: 8px; color: #34d399; 
+        }
+        .overlay-text { 
+            font-size: 0.8rem; 
+            sm:font-size: 0.9rem;
+            margin-bottom: 20px; 
+        }
+        .overlay-button {
+            background-color: #10b981; color: white; 
+            padding: 10px 15px; /* Base padding */
+            sm:padding: 10px 20px;
+            border-radius: 8px; 
+            font-size: 0.9rem; /* Base font size */
+            sm:font-size: 1.0rem;
+            cursor: pointer; border: none;
+            transition: background-color 0.2s;
+            user-select: none; -webkit-user-select: none;
+        }
+        .overlay-button:focus { outline: none; }
+        .overlay-button:hover { background-color: #059669; }
+
+        /* Modal Styling (Game Over/Crash & Settings) */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 100; opacity: 0; visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content {
+            background-color: #1f2937; color: white; padding: 15px; border-radius: 10px; text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transform: scale(0.9); transition: transform 0.3s ease;
+            min-width: 280px; 
+            max-width: 90%;
+            sm:max-width: 80%;
+            md:max-width: 400px; 
+        }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+        .modal-button {
+            background-color: #3b82f6; 
+            color: white; 
+            padding: 8px 10px; 
+            sm:padding: 8px 12px;
+            border-radius: 6px; text-align: center; cursor: pointer;
+            font-size: 0.7rem; 
+            sm:font-size: 0.75rem;
+            margin: 5px; border: none; transition: background-color 0.2s;
+            display: block; 
+            width: calc(100% - 10px); 
+            box-sizing: border-box;
+            user-select: none; -webkit-user-select: none;
+        }
+        .modal-button:focus { outline: none; }
+        .modal-button:hover { background-color: #2563eb; } 
+
+        .modal-button-danger { background-color: #ef4444; } 
+        .modal-button-danger:hover { background-color: #dc2626; }
+        
+        .modal-button-green { background-color: #10b981; } 
+        .modal-button-green:hover { background-color: #059669; }
+
+        .modal-button-special { background-color: #10b981; } 
+        .modal-button-special:hover { background-color: #059669; } 
+        .modal-button-confirm { background-color: #10b981; } 
+        .modal-button-confirm:hover { background-color: #059669; }
+        
+        .modal-button-default-gray { background-color: #6b7280; } 
+        .modal-button-default-gray:hover { background-color: #4b5563; }
+
+        .modal-button-main-menu { background-color: #ef4444; } 
+        .modal-button-main-menu:hover { background-color: #dc2626; }
+        
+        .modal-close-button { 
+            background-color: #6b7280; 
+            margin-top: 10px; 
+        }
+        .modal-close-button:hover { background-color: #4b5563; }
+
+
+        .game-ui {
+            display: flex; justify-content: space-between; align-items: center;
+            width: 100%; 
+            max-width: 320px; 
+            sm:max-width: 384px; 
+            md:max-width: 448px; 
+            lg:max-width: 512px; 
+            margin-bottom: 5px; 
+            padding: 0 2px; 
+        }
+        .game-ui-left, .game-ui-right {
+            display: flex;
+            align-items: center;
+        }
+        .game-ui-right button, .game-ui-right .settings-button-icon {
+            margin-left: 5px; 
+            sm:margin-left: 8px;
+        }
+        .lives-display { 
+            font-size: 0.7rem; 
+            sm:font-size: 0.8rem; 
+            color: #ef4444; 
+        }
+        .score-display { 
+            font-size: 0.6rem; 
+            sm:font-size: 0.7rem; 
+            margin-left: 8px;  
+        }
+        .ui-button { 
+            color: white; 
+            padding: 4px 6px; 
+            sm:padding: 5px 8px;
+            border-radius: 4px; 
+            font-size: 0.5rem; 
+            sm:font-size: 0.6rem;
+            cursor: pointer; border: none;
+            transition: background-color 0.2s;
+            line-height: 1; 
+            user-select: none; -webkit-user-select: none;
+        }
+        .ui-button:focus { outline: none; }
+        .pause-button { 
+            background-color: #f59e0b; 
+        }
+        .pause-button:hover { background-color: #d97706;  }
+        .pause-button.resume-active { 
+            background-color: #10b981;
+        }
+        .pause-button.resume-active:hover {
+            background-color: #059669;
+        }
+
+        .settings-button-icon {
+            background: none; border: none; color: #9ca3af; 
+            font-size: 0.9rem; 
+            sm:font-size: 1rem; 
+            padding: 3px; line-height: 1; cursor: pointer;
+            user-select: none; -webkit-user-select: none;
+        }
+        .settings-button-icon:focus { outline: none; }
+        .settings-button-icon:hover { color: #f3f4f6; }
+
+        /* Settings Modal Specifics */
+        .settings-panel { 
+            width: 100%;
+        }
+        .settings-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px; 
+            padding: 6px 0; 
+            border-bottom: 1px solid #374151; 
+        }
+        .settings-option:last-child { border-bottom: none; }
+        .settings-option label { 
+            font-size: 0.75rem; 
+            sm:font-size: 0.8rem; 
+            margin-right: 10px; user-select: none; -webkit-user-select: none;
+        }
+        .settings-option input[type="checkbox"] {
+            width: 16px; height: 16px; 
+            sm:width: 18px; sm:height: 18px; 
+            accent-color: #10b981; 
+            cursor: pointer;
+        }
+        .settings-option input[type="checkbox"]:focus { outline: 1px solid #34d399; }
+        .speed-button.active-speed {
+            border: 2px solid #34d399; 
+            box-shadow: 0 0 5px #34d399;
+        }
+
+
+        .touch-controls {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+            margin-top: 10px; width: 100%; max-width: 260px; 
+        }
+        .touch-button {
+            background-color: #10b981; 
+            color: white; 
+            padding: 12px 0; 
+            border-radius: 6px; text-align: center; cursor: pointer;
+            font-size: 1.2rem; 
+            user-select: none; -webkit-user-select: none;
+            line-height: 1; 
+            min-width: 50px; 
+            box-sizing: border-box;
+        }
+        .touch-button:focus { outline: none; }
+        .touch-button:hover { background-color: #059669;  }
+        .touch-button.empty { background-color: transparent; pointer-events: none; }
+        /* Changed md:hidden to lg:hidden */
+        @media (min-width: 1024px) { .touch-controls { display: none; } } 
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="startScreen" class="overlay active"> <div class="overlay-content">
+            <img src="snake classic image.png" alt="Snake Classic" width="150" style="display: block; margin: 0 auto;">
+            <h1 class="overlay-title">Snake Classic</h1>
+            <p class="overlay-text">Use Arrow Keys or Swipe. Eat 🍎 to grow!</p>
+            <button id="startGameButton" class="overlay-button">Start Game</button>
+            <a href="index.html" class="overlay-button" style="background-color:red; padding: 10px; color: white; text-decoration: none; border: none; border-radius: 5px;">Exit</a>
+
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal-overlay"> <div class="modal-content">
+            <h2 id="settingsModalTitle" class="text-xl sm:text-2xl font-bold mb-3">Settings</h2>
+            
+            <div id="mainSettingsPanel" class="settings-panel">
+                <button id="settingsResumeButton" class="modal-button modal-button-green">Resume Game</button>
+                <button id="settingsRestartButton" class="modal-button modal-button-green">Restart Game</button>
+                <button id="soundsSettingsNavButton" class="modal-button modal-button-green">Sounds Settings</button>
+                <button id="adjustSpeedButton" class="modal-button modal-button-green">Adjust Snake Speed</button>
+                <button id="settingsMainMenuButton" class="modal-button modal-button-main-menu">Main Menu</button>
+                <button id="closeSettingsButton" class="modal-button modal-button-default-gray">Close Settings</button>
+            </div>
+
+            <div id="soundSettingsPanel" class="settings-panel hidden">
+                <h3 class="text-lg font-semibold mb-2">Sound & Vibration</h3>
+                 <div class="settings-option">
+                    <label for="soundEffectsToggle">Sound Effects</label>
+                    <input type="checkbox" id="soundEffectsToggle" checked>
+                </div>
+                <div class="settings-option">
+                    <label for="musicToggle">Background Music</label>
+                    <input type="checkbox" id="musicToggle" checked>
+                </div>
+                <div class="settings-option">
+                    <label for="vibrationToggle">Vibration</label>
+                    <input type="checkbox" id="vibrationToggle" checked>
+                </div>
+                <button id="backToMainSettingsFromSoundButton" class="modal-button modal-close-button">Back to Settings</button>
+            </div>
+
+            <div id="speedSettingsPanel" class="settings-panel hidden">
+                <h3 class="text-lg font-semibold mb-2">Select Speed:</h3>
+                <button id="speedBeginner" data-speed="180" class="modal-button speed-button">Beginner (180ms)</button>
+                <button id="speedIntermediate" data-speed="154" class="modal-button speed-button">Intermediate (154ms)</button>
+                <button id="speedPro" data-speed="90" class="modal-button speed-button">Pro (90ms)</button>
+                <button id="backToMainSettingsFromSpeedButton" class="modal-button modal-close-button">Back to Settings</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="game-container">
+        <div id="gameUiElements" class="game-ui hidden">
+            <div class="game-ui-left">
+                <div id="livesDisplay" class="lives-display"></div>
+                <div class="score-display">Score: <span id="score">0</span></div>
+            </div>
+            <div class="game-ui-right">
+                <button id="pauseButton" class="ui-button pause-button">Pause</button>
+                <button id="settingsButton" class="settings-button-icon">⚙️</button> 
+            </div>
+        </div>
+        <div id="gameBoard" class="game-board"></div>
+        <div id="gameModal" class="modal-overlay"> <div class="modal-content">
+                <h2 id="modalTitle" class="text-xl sm:text-2xl font-bold mb-3"></h2>
+                <p id="modalMessage" class="mb-4 text-sm sm:text-base"></p>
+                <div id="modalButtonsContainer"></div>
+            </div>
+        </div>
+        <div id="touchControls" class="touch-controls lg:hidden hidden">
+            <div class="empty"></div><div id="touchUp" class="touch-button">↑</div><div class="empty"></div>
+            <div id="touchLeft" class="touch-button">←</div><div class="empty"></div><div id="touchRight" class="touch-button">→</div>
+            <div class="empty"></div><div id="touchDown" class="touch-button">↓</div><div class="empty"></div>
+        </div>
+    </div>
+
+    <script>
+        const gameBoard = document.getElementById('gameBoard');
+        const scoreDisplay = document.getElementById('score');
+        const livesDisplay = document.getElementById('livesDisplay');
+        const gameModal = document.getElementById('gameModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalButtonsContainer = document.getElementById('modalButtonsContainer');
+        const startScreen = document.getElementById('startScreen');
+        const startGameButton = document.getElementById('startGameButton');
+        const pauseButton = document.getElementById('pauseButton');
+        const settingsButton = document.getElementById('settingsButton');
+        
+        const settingsModal = document.getElementById('settingsModal');
+        const settingsModalTitle = document.getElementById('settingsModalTitle');
+        const mainSettingsPanel = document.getElementById('mainSettingsPanel');
+        const soundSettingsPanel = document.getElementById('soundSettingsPanel'); 
+        const speedSettingsPanel = document.getElementById('speedSettingsPanel');
+        const adjustSpeedButton = document.getElementById('adjustSpeedButton');
+        const soundsSettingsNavButton = document.getElementById('soundsSettingsNavButton'); 
+        const backToMainSettingsFromSoundButton = document.getElementById('backToMainSettingsFromSoundButton'); 
+        const backToMainSettingsFromSpeedButton = document.getElementById('backToMainSettingsFromSpeedButton'); 
+        const closeSettingsButton = document.getElementById('closeSettingsButton');
+        const soundEffectsToggle = document.getElementById('soundEffectsToggle');
+        const musicToggle = document.getElementById('musicToggle');
+        const vibrationToggle = document.getElementById('vibrationToggle');
+        const settingsResumeButton = document.getElementById('settingsResumeButton'); 
+        const settingsRestartButton = document.getElementById('settingsRestartButton');
+        const settingsMainMenuButton = document.getElementById('settingsMainMenuButton');
+        const speedButtons = [
+            document.getElementById('speedBeginner'),
+            document.getElementById('speedIntermediate'),
+            document.getElementById('speedPro')
+        ];
+
+
+        const gameUiElements = document.getElementById('gameUiElements');
+        const touchControlsContainer = document.getElementById('touchControls');
+
+        const gridSize = 20;
+        let cellSize;
+        const initialLives = 3;
+        const initialSnakeLength = 3;
+        let lives, snake, food, direction, score, gameInterval, gameActive, isPaused, isPausedForRevive, isGameStarted = false;
+        let lastSnakeLength = initialSnakeLength; 
+        let gamePausedBeforeSettings = false; 
+        
+        const gameSettings = {
+            soundEffectsEnabled: true,
+            musicEnabled: true,
+            vibrationEnabled: true,
+            speedInterval: 154 
+        };
+
+        let eatSynth, gameOverSynth, reviveSynth, restartSynth; 
+        let bgMusicMelody, bgMusicBass, bgMusicLoop;
+
+        const touchUp = document.getElementById('touchUp'), touchLeft = document.getElementById('touchLeft'),
+              touchRight = document.getElementById('touchRight'), touchDown = document.getElementById('touchDown');
+        let touchStartX = 0, touchStartY = 0, touchEndX = 0, touchEndY = 0;
+
+        function setupSounds() { 
+            eatSynth = new Tone.FMSynth({ harmonicity: 2, modulationIndex: 3, envelope: { attack: 0.01, decay: 0.1, sustain: 0.01, release: 0.1 }, modulationEnvelope: { attack: 0.01, decay: 0.05, sustain: 0, release: 0.1 } }).toDestination();
+            gameOverSynth = new Tone.NoiseSynth({ noise: { type: 'brown' }, envelope: { attack: 0.01, decay: 0.5, sustain: 0, release: 0.2 } }).toDestination();
+            const gameOverPanner = new Tone.AutoPanner("2n").toDestination().start();
+            const gameOverFilter = new Tone.AutoFilter("4n").toDestination().start();
+            gameOverSynth.connect(gameOverPanner); gameOverSynth.connect(gameOverFilter);
+            reviveSynth = new Tone.Synth({ oscillator: { type: "pulse", width: 0.3 }, envelope: { attack: 0.01, decay: 0.3, sustain: 0.05, release: 0.2 } }).toDestination();
+            reviveSynth.volume.value = -6;
+            restartSynth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: "triangle" }, envelope: { attack: 0.02, decay: 0.1, sustain: 0.05, release: 0.15 } }).toDestination();
+            
+            bgMusicMelody = new Tone.Synth({ oscillator: { type: 'triangle8' }, envelope: { attack: 0.02, decay: 0.1, sustain: 0.3, release: 0.5 } }).toDestination();
+            bgMusicMelody.volume.value = -18; 
+            
+            bgMusicBass = new Tone.Synth({ 
+                oscillator: { type: 'triangle' }, 
+                envelope: { attack: 0.05, decay: 0.2, sustain: 0.5, release: 0.8 } 
+            }).toDestination();
+            bgMusicBass.volume.value = -16; 
+
+            const melodyPattern = [ "C4", "E4", "G4", "E4", "D4", "F4", "A4", "F4", "E4", "G4", "B4", "G4", "F4", "A4", "C5", "A4" ];
+            const bassPattern = [ { time: "0:0", note: "C2", duration: "2n"}, { time: "0:2", note: "G2", duration: "2n"}, { time: "1:0", note: "A2", duration: "2n"}, { time: "1:2", note: "E2", duration: "2n"}, { time: "2:0", note: "F2", duration: "2n"}, { time: "2:2", note: "C2", duration: "2n"}, { time: "3:0", note: "G2", duration: "1n"}, ];
+            new Tone.Sequence((time, note) => { bgMusicMelody.triggerAttackRelease(note, "8n", time); }, melodyPattern, "4n").start(0);
+            new Tone.Part((time, value) => { bgMusicBass.triggerAttackRelease(value.note, value.duration, time); }, bassPattern).start(0);
+            bgMusicLoop = new Tone.Loop(() => {}, "4m").start(0); 
+            Tone.Transport.bpm.value = 100;
+        }
+
+        function playSound(type) { 
+            if (!gameSettings.soundEffectsEnabled || !Tone.context || Tone.context.state !== 'running') return;
+            try {
+                const now = Tone.now();
+                if (type === 'eat' && eatSynth) eatSynth.triggerAttackRelease("A5", "32n", now);
+                else if (type === 'gameover' && gameOverSynth) {
+                    gameOverSynth.triggerAttackRelease("0.5", now); 
+                    const pitchedFail = new Tone.Synth().toDestination();
+                    pitchedFail.triggerAttackRelease("C3", "0.4", now);
+                    pitchedFail.triggerAttackRelease("G2", "0.4", now + 0.2);
+                    pitchedFail.triggerAttackRelease("C2", "0.5", now + 0.4);
+                }
+                else if (type === 'revive' && reviveSynth) {
+                    reviveSynth.triggerAttackRelease("G5", "16n", now);
+                    reviveSynth.triggerAttackRelease("C6", "16n", now + 0.1);
+                    reviveSynth.triggerAttackRelease("E6", "16n", now + 0.2);
+                }
+                else if (type === 'restart' && restartSynth) {
+                     restartSynth.triggerAttackRelease(["C4", "E4", "G4"], "8n", now);
+                }
+            } catch (e) { console.error("Error playing sound:", e); }
+        }
+        
+        function playVibration(pattern = 100) { 
+            if (gameSettings.vibrationEnabled && navigator.vibrate) {
+                try { navigator.vibrate(pattern); } catch (e) { console.warn("Vibration failed:", e); }
+            }
+        }
+
+        function startBackgroundMusic() {
+            if (gameSettings.musicEnabled && Tone.Transport.state !== "started") {
+                Tone.Transport.start();
+            }
+        }
+        function stopBackgroundMusic() {
+            if (Tone.Transport.state === "started") {
+                Tone.Transport.pause(); 
+            }
+        }
+        
+        function updateGameSpeed() {
+            if (gameInterval) clearInterval(gameInterval); 
+            if (gameActive && !isPaused && !isPausedForRevive) { 
+                gameInterval = setInterval(gameLoop, gameSettings.speedInterval);
+            }
+        }
+
+
+        function calculateCellSize() { 
+            let takenHeight = 0;
+            if(gameUiElements.classList.contains('hidden') === false) {
+                takenHeight += gameUiElements.offsetHeight;
+            }
+            if(touchControlsContainer.classList.contains('hidden') === false && window.innerWidth < 1024) { // Use 1024 for consistency with lg breakpoint
+                takenHeight += touchControlsContainer.offsetHeight;
+            }
+            takenHeight += 20; 
+            const availableHeight = window.innerHeight - takenHeight; 
+            const availableWidth = window.innerWidth * 0.98; 
+            const maxBoardDim = 700; 
+            const boardSize = Math.min(availableWidth, availableHeight, maxBoardDim);
+            cellSize = Math.floor(boardSize / gridSize);
+            gameBoard.style.width = `${gridSize * cellSize}px`;
+            gameBoard.style.height = `${gridSize * cellSize}px`;
+            gameBoard.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+            gameBoard.style.gridTemplateRows = `repeat(${gridSize}, 1fr)`;
+        }
+        function handleStartGame() { 
+            if (Tone.context.state !== 'running') {
+                Tone.start().then(() => { 
+                    if (!eatSynth) setupSounds(); 
+                    proceedToGame(); 
+                }).catch(e => console.error("Error starting Tone.js:", e));
+            } else { 
+                if (!eatSynth) setupSounds(); 
+                proceedToGame(); 
+            }
+        }
+        function proceedToGame() { 
+            isGameStarted = true; 
+            startScreen.classList.remove('active'); 
+            settingsModal.classList.remove('active'); 
+            gameUiElements.classList.remove('hidden');
+            // Updated condition for showing touch controls
+            if (window.innerWidth < 1024) { // Tailwind lg breakpoint is 1024px
+                 touchControlsContainer.classList.remove('hidden');
+            } else {
+                 touchControlsContainer.classList.add('hidden');
+            }
+            calculateCellSize(); 
+            initializeGame(initialLives, initialSnakeLength);
+            playSound('restart');
+            if (gameActive && !isPaused) startBackgroundMusic();
+        }
+
+        function initializeGame(startWithLives = initialLives, snakeLength = initialSnakeLength) {
+            if (gameInterval) clearInterval(gameInterval);
+            gameActive = false; 
+            isPaused = false;
+            isPausedForRevive = false;
+            lives = startWithLives;
+            updateLivesDisplay();
+            const startX = Math.floor(gridSize / 2);
+            const startY = Math.floor(gridSize / 2);
+            snake = [];
+            for (let i = 0; i < snakeLength; i++) {
+                snake.push({ x: startX - i, y: startY }); 
+            }
+            direction = { x: 1, y: 0 }; 
+            if (startWithLives === initialLives && snakeLength === initialSnakeLength) {
+                score = 0;
+            }
+            scoreDisplay.textContent = score; 
+            lastSnakeLength = snake.length; 
+            
+            hideModal(); 
+            settingsModal.classList.remove('active'); 
+            placeFood();
+            drawGame(); 
+            gameActive = true; 
+            pauseButton.textContent = "Pause";
+            pauseButton.classList.remove('resume-active'); 
+            pauseButton.disabled = false;
+            settingsButton.disabled = false;
+            updateGameSpeed(); 
+        }
+
+        function updateLivesDisplay() { 
+            const currentLives = Math.max(0, lives);
+            livesDisplay.innerHTML = Array(currentLives).fill('❤️').join('') + Array(initialLives - currentLives).fill('🖤').join(''); 
+        }
+
+        function gameLoop() {
+            if (!isGameStarted || !gameActive || isPaused || isPausedForRevive || gameModal.classList.contains('active') || settingsModal.classList.contains('active')) {
+                return;
+            }
+            updateSnakePosition();
+            if (checkCollision()) { 
+                handleCrash(); 
+                return; 
+            }
+            if (snake[0].x === food.x && snake[0].y === food.y) {
+                eatFood();
+            }
+            drawGame();
+        }
+
+        function updateSnakePosition() {
+            const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
+            snake.unshift(head); snake.pop();
+        }
+
+        function getDirectionString() {
+            if (direction.x === 1) return "right";
+            if (direction.x === -1) return "left";
+            if (direction.y === 1) return "down";
+            if (direction.y === -1) return "up";
+            return "right"; 
+        }
+
+        function drawGame() {
+            if (!isGameStarted && !isPausedForRevive) return; 
+            gameBoard.innerHTML = ''; 
+            const dirString = getDirectionString();
+
+            snake.forEach((segment, index) => {
+                const segmentContainer = document.createElement('div');
+                segmentContainer.style.gridRowStart = segment.y + 1;
+                segmentContainer.style.gridColumnStart = segment.x + 1;
+                segmentContainer.classList.add('snake-segment-container');
+                const visualElement = document.createElement('div');
+                visualElement.classList.add('snake-visual');
+                if (index === 0) { 
+                    segmentContainer.classList.add('snake-head');
+                    visualElement.style.backgroundColor = '#047857'; 
+                    let headBorderRadius = '50% 50% 35% 35%'; 
+                    if (dirString === "down") headBorderRadius = '35% 35% 50% 50%';
+                    else if (dirString === "left") headBorderRadius = '50% 35% 35% 50%';
+                    else if (dirString === "right") headBorderRadius = '35% 50% 50% 35%';
+                    visualElement.style.borderRadius = headBorderRadius;
+                    const eye1 = document.createElement('div'); eye1.classList.add('snake-eye');
+                    const eye2 = document.createElement('div'); eye2.classList.add('snake-eye');
+                    if (dirString === "up") { eye1.style.top = "25%"; eye1.style.left = "20%"; eye2.style.top = "25%"; eye2.style.right = "20%"; } 
+                    else if (dirString === "down") { eye1.style.bottom = "25%"; eye1.style.left = "20%"; eye2.style.bottom = "25%"; eye2.style.right = "20%"; } 
+                    else if (dirString === "left") { eye1.style.top = "20%"; eye1.style.left = "25%"; eye2.style.bottom = "20%"; eye2.style.left = "25%"; } 
+                    else { eye1.style.top = "20%"; eye1.style.right = "25%"; eye2.style.bottom = "20%"; eye2.style.right = "25%"; }
+                    visualElement.appendChild(eye1); visualElement.appendChild(eye2);
+                } else if (index === snake.length - 1 && snake.length > 1) { 
+                    segmentContainer.classList.add('snake-tail');
+                    visualElement.style.width = "60%"; visualElement.style.height = "60%";
+                    visualElement.style.backgroundColor = '#34d399'; 
+                    let tailBorderRadius = '0 40% 40% 0'; 
+                    const prev = snake[index-1]; 
+                    if (segment.x < prev.x) tailBorderRadius = '0 40% 40% 0'; 
+                    else if (segment.x > prev.x) tailBorderRadius = '40% 0 0 40%'; 
+                    else if (segment.y < prev.y) tailBorderRadius = '0 0 40% 40%'; 
+                    else if (segment.y > prev.y) tailBorderRadius = '40% 40% 0 0'; 
+                    visualElement.style.borderRadius = tailBorderRadius;
+                } else { 
+                    segmentContainer.classList.add('snake-body');
+                    visualElement.style.borderRadius = '30%'; 
+                }
+                segmentContainer.appendChild(visualElement); gameBoard.appendChild(segmentContainer);
+            });
+            const foodEl = document.createElement('div');
+            foodEl.style.gridRowStart = food.y + 1; foodEl.style.gridColumnStart = food.x + 1;
+            foodEl.classList.add('food'); foodEl.textContent = '🍎';
+            foodEl.style.fontSize = `${cellSize * 0.75}px`;
+            gameBoard.appendChild(foodEl);
+        }
+
+        function placeFood() { 
+            do { food = { x: Math.floor(Math.random() * gridSize), y: Math.floor(Math.random() * gridSize) };
+            } while (snake.some(seg => seg.x === food.x && seg.y === food.y));
+        }
+        function eatFood() { 
+            playSound('eat'); 
+            playVibration(50); 
+            score++; scoreDisplay.textContent = score;
+            snake.push({ ...snake[snake.length - 1] }); 
+            lastSnakeLength = snake.length; 
+            placeFood();
+        }
+        function checkCollision() { 
+            const head = snake[0];
+            if (!head) return false; 
+            if (head.x < 0 || head.x >= gridSize || head.y < 0 || head.y >= gridSize) return true;
+            for (let i = 1; i < snake.length; i++) if (snake[i].x === head.x && snake[i].y === head.y) return true;
+            return false;
+        }
+
+        function goToMainMenu() {
+            stopBackgroundMusic();
+            hideModal(); 
+            settingsModal.classList.remove('active'); 
+            mainSettingsPanel.classList.remove('hidden'); 
+            speedSettingsPanel.classList.add('hidden');
+            soundSettingsPanel.classList.add('hidden'); 
+            gameUiElements.classList.add('hidden');
+            touchControlsContainer.classList.add('hidden');
+            gameBoard.innerHTML = ''; 
+            startScreen.classList.add('active'); 
+            isGameStarted = false; 
+            gameActive = false; 
+            if(gameInterval) clearInterval(gameInterval); 
+            score = 0; 
+            scoreDisplay.textContent = score;
+            lives = initialLives; 
+            updateLivesDisplay(); 
+            pauseButton.disabled = true;
+            settingsButton.disabled = true; 
+        }
+
+        function handleCrash() {
+            stopBackgroundMusic(); 
+            playVibration([200, 50, 200]); 
+            gameActive = false; 
+            if(gameInterval) clearInterval(gameInterval); 
+            lives--; 
+            updateLivesDisplay();
+            pauseButton.disabled = true;
+            settingsButton.disabled = true; 
+
+            if (lives > 0) { 
+                showModal("Crashed!", `You have ${lives} ${lives === 1 ? 'life' : 'lives'} left. Score: ${score}`, [
+                    { text: "Use Life (Continue)", class: "modal-button-special", action: () => { handleUseLife(lastSnakeLength); } }, 
+                    { text: "Restart Game", class: "modal-button-danger", action: () => { score = 0; initializeGame(initialLives, initialSnakeLength); playSound('restart'); if(gameActive && !isPaused) startBackgroundMusic();} } 
+                ]);
+            } else { 
+                playSound('gameover'); 
+                showModal("Game Over!", `Final Score: ${score}.`, [
+                    { text: "Restart Again", class: "modal-button-confirm", action: () => { score = 0; initializeGame(initialLives, initialSnakeLength); playSound('restart'); if(gameActive && !isPaused) startBackgroundMusic();} },
+                    { text: "Main Menu", class: "modal-button modal-button-default-gray", action: goToMainMenu }
+                ]);
+            }
+        }
+
+        function handleUseLife(lengthToRestore) {
+            playSound('revive');
+            hideModal(); 
+            if (gameInterval) clearInterval(gameInterval);
+            isPausedForRevive = true; 
+            gameActive = false; 
+            const startX = Math.floor(gridSize / 2);
+            const startY = Math.floor(gridSize / 2);
+            snake = [];
+            for (let i = 0; i < lengthToRestore; i++) {
+                snake.push({ x: startX - i, y: startY });
+            }
+            direction = { x: 1, y: 0 }; 
+            lastSnakeLength = snake.length; 
+            
+            drawGame(); 
+            setTimeout(() => {
+                isPausedForRevive = false; 
+                gameActive = true; 
+                pauseButton.disabled = false;
+                settingsButton.disabled = false;
+                if (gameActive && !isPaused) startBackgroundMusic(); 
+                updateGameSpeed(); 
+            }, 1000);
+        }
+
+        function togglePause(invokedBySettings = false) { 
+            if (!isGameStarted || 
+                isPausedForRevive || 
+                gameModal.classList.contains('active') || 
+                (settingsModal.classList.contains('active') && !invokedBySettings) ) {
+                return;
+            }
+            if (!gameActive && !isPaused && !invokedBySettings) { 
+                 if (!isPaused && !invokedBySettings && !gameActive) return; 
+            }
+
+            isPaused = !isPaused;
+            pauseButton.textContent = isPaused ? "Resume" : "Pause";
+            if (isPaused) {
+                pauseButton.classList.add('resume-active'); 
+                stopBackgroundMusic();
+                const existingPauseMsg = document.getElementById("pauseMessageOverlay");
+                if (!existingPauseMsg) { 
+                    const pauseMsg = document.createElement('div'); 
+                    pauseMsg.id = "pauseMessageOverlay";
+                    pauseMsg.textContent = "PAUSED";
+                    Object.assign(pauseMsg.style, { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", color: "#1f2937", fontSize: `${cellSize * 1.5}px`, zIndex: "50" });
+                    gameBoard.appendChild(pauseMsg);
+                }
+            } else { 
+                pauseButton.classList.remove('resume-active'); 
+                if (gameActive) startBackgroundMusic(); 
+                const existingMsg = document.getElementById("pauseMessageOverlay"); 
+                if (existingMsg) gameBoard.removeChild(existingMsg);
+                updateGameSpeed(); 
+            }
+        }
+        
+
+        function showModal(title, message, buttons) { 
+            modalTitle.textContent = title; modalMessage.textContent = message;
+            modalButtonsContainer.innerHTML = '';
+            buttons.forEach(btnInfo => {
+                const button = document.createElement('button');
+                button.textContent = btnInfo.text; button.className = `modal-button ${btnInfo.class || ''}`;
+                button.onclick = () => { 
+                    btnInfo.action(); 
+                };
+                modalButtonsContainer.appendChild(button);
+            });
+            gameModal.classList.add('active');
+        }
+        function hideModal() { 
+            gameModal.classList.remove('active');
+            if (gameActive && !isPausedForRevive && isGameStarted) { 
+                pauseButton.disabled = isPaused; 
+                settingsButton.disabled = false; 
+            }
+        }
+        
+        // Settings Modal Logic
+        settingsButton.addEventListener('click', () => {
+            if (!isGameStarted || gameModal.classList.contains('active')) return;
+            gamePausedBeforeSettings = isPaused; 
+            if (gameActive && !isPaused) { 
+                togglePause(true); 
+            }
+            mainSettingsPanel.classList.remove('hidden');
+            speedSettingsPanel.classList.add('hidden');
+            soundSettingsPanel.classList.add('hidden');
+            settingsModalTitle.textContent = "Settings";
+            settingsModal.classList.add('active');
+            pauseButton.disabled = true; 
+            settingsButton.disabled = true; 
+        });
+
+        adjustSpeedButton.addEventListener('click', () => {
+            mainSettingsPanel.classList.add('hidden');
+            soundSettingsPanel.classList.add('hidden');
+            speedSettingsPanel.classList.remove('hidden');
+            settingsModalTitle.textContent = "Adjust Speed";
+            speedButtons.forEach(btn => {
+                btn.classList.remove('active-speed');
+                if (parseInt(btn.dataset.speed) === gameSettings.speedInterval) {
+                    btn.classList.add('active-speed');
+                }
+            });
+        });
+        
+        soundsSettingsNavButton.addEventListener('click', () => {
+            mainSettingsPanel.classList.add('hidden');
+            speedSettingsPanel.classList.add('hidden');
+            soundSettingsPanel.classList.remove('hidden');
+            settingsModalTitle.textContent = "Sound & Vibration";
+        });
+
+        backToMainSettingsFromSoundButton.addEventListener('click', () => {
+            soundSettingsPanel.classList.add('hidden');
+            mainSettingsPanel.classList.remove('hidden');
+            settingsModalTitle.textContent = "Settings";
+        });
+
+        backToMainSettingsFromSpeedButton.addEventListener('click', () => {
+            speedSettingsPanel.classList.add('hidden');
+            mainSettingsPanel.classList.remove('hidden');
+            settingsModalTitle.textContent = "Settings";
+        });
+        
+        speedButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                gameSettings.speedInterval = parseInt(button.dataset.speed);
+                speedButtons.forEach(btn => btn.classList.remove('active-speed'));
+                button.classList.add('active-speed');
+                updateGameSpeed(); 
+            });
+        });
+
+        settingsResumeButton.addEventListener('click', () => {
+            settingsModal.classList.remove('active');
+            mainSettingsPanel.classList.remove('hidden'); 
+            speedSettingsPanel.classList.add('hidden');
+            soundSettingsPanel.classList.add('hidden');
+            pauseButton.disabled = false; 
+            settingsButton.disabled = false; 
+
+            if (isGameStarted && gameActive && isPaused) { 
+                 togglePause(true); 
+            }
+        });
+
+        closeSettingsButton.addEventListener('click', () => {
+            settingsModal.classList.remove('active');
+            mainSettingsPanel.classList.remove('hidden'); 
+            speedSettingsPanel.classList.add('hidden');
+            soundSettingsPanel.classList.add('hidden');
+            pauseButton.disabled = false; 
+            settingsButton.disabled = false; 
+
+            if (isGameStarted && gameActive) { 
+                if (!gamePausedBeforeSettings && isPaused) { 
+                    togglePause(true); 
+                }
+            }
+        });
+        
+        settingsRestartButton.addEventListener('click', () => {
+            settingsModal.classList.remove('active');
+            mainSettingsPanel.classList.remove('hidden'); 
+            speedSettingsPanel.classList.add('hidden');
+            soundSettingsPanel.classList.add('hidden');
+            score = 0; 
+            initializeGame(initialLives, initialSnakeLength); 
+            playSound('restart'); 
+            if(gameActive && !isPaused) startBackgroundMusic();
+        });
+
+        settingsMainMenuButton.addEventListener('click', () => {
+            settingsModal.classList.remove('active');
+            mainSettingsPanel.classList.remove('hidden'); 
+            speedSettingsPanel.classList.add('hidden');
+            soundSettingsPanel.classList.add('hidden');
+            goToMainMenu();
+        });
+
+
+        soundEffectsToggle.addEventListener('change', (e) => {
+            gameSettings.soundEffectsEnabled = e.target.checked;
+        });
+        musicToggle.addEventListener('change', (e) => {
+            gameSettings.musicEnabled = e.target.checked;
+            if (gameSettings.musicEnabled && gameActive && !isPaused && !isPausedForRevive) {
+                startBackgroundMusic();
+            } else {
+                stopBackgroundMusic();
+            }
+        });
+        vibrationToggle.addEventListener('change', (e) => {
+            gameSettings.vibrationEnabled = e.target.checked;
+            if(gameSettings.vibrationEnabled) playVibration(50); 
+        });
+
+
+        function handleKeyPress(event) { 
+            if (!isGameStarted || gameModal.classList.contains('active') || settingsModal.classList.contains('active')) return;
+            const key = event.key;
+            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key)) event.preventDefault();
+            if (key.toLowerCase() === 'p') { togglePause(); return; }
+            if (!gameActive || isPaused || isPausedForRevive) return; 
+            if (key === "ArrowUp" && direction.y === 0) direction = { x: 0, y: -1 };
+            else if (key === "ArrowDown" && direction.y === 0) direction = { x: 0, y: 1 };
+            else if (key === "ArrowLeft" && direction.x === 0) direction = { x: -1, y: 0 };
+            else if (key === "ArrowRight" && direction.x === 0) direction = { x: 1, y: 0 };
+        }
+        function handleTouchStart(event) { 
+            if (!isGameStarted || gameModal.classList.contains('active') || settingsModal.classList.contains('active') || !gameActive || isPaused || isPausedForRevive) return;
+            touchStartX = event.changedTouches[0].screenX; touchStartY = event.changedTouches[0].screenY;
+        }
+        function handleTouchEnd(event) { 
+            if (!isGameStarted || gameModal.classList.contains('active') || settingsModal.classList.contains('active') || !gameActive || isPaused || isPausedForRevive) return;
+            touchEndX = event.changedTouches[0].screenX; touchEndY = event.changedTouches[0].screenY; handleSwipe();
+        }
+        function handleSwipe() { 
+            const dX = touchEndX - touchStartX, dY = touchEndY - touchStartY;
+            const absDX = Math.abs(dX), absDY = Math.abs(dY);
+            if (absDX > 20 || absDY > 20) { 
+                if (absDX > absDY) { 
+                    if (dX > 0 && direction.x === 0) direction = { x: 1, y: 0 }; 
+                    else if (dX < 0 && direction.x === 0) direction = { x: -1, y: 0 }; 
+                } else { 
+                    if (dY > 0 && direction.y === 0) direction = { x: 0, y: 1 }; 
+                    else if (dY < 0 && direction.y === 0) direction = { x: 0, y: -1 }; 
+                }
+            }
+        }
+
+        pauseButton.addEventListener('click', () => togglePause());
+        
+        if (touchUp) touchUp.addEventListener('click', () => { if (gameActive && !isPaused && !isPausedForRevive && direction.y === 0) direction = { x: 0, y: -1 }; });
+        if (touchDown) touchDown.addEventListener('click', () => { if (gameActive && !isPaused && !isPausedForRevive && direction.y === 0) direction = { x: 0, y: 1 }; });
+        if (touchLeft) touchLeft.addEventListener('click', () => { if (gameActive && !isPaused && !isPausedForRevive && direction.x === 0) direction = { x: -1, y: 0 }; });
+        if (touchRight) touchRight.addEventListener('click', () => { if (gameActive && !isPaused && !isPausedForRevive && direction.x === 0) direction = { x: 1, y: 0 }; });
+        
+        startGameButton.addEventListener('click', handleStartGame); 
+        
+        document.addEventListener('keydown', handleKeyPress);
+        gameBoard.addEventListener('touchstart', handleTouchStart, { passive: false });
+        gameBoard.addEventListener('touchend', handleTouchEnd, { passive: false });
+        
+        window.addEventListener('resize', () => { 
+            calculateCellSize();
+            if (isGameStarted || isPausedForRevive) {
+                 drawGame();
+            }
+            if(isPaused && document.getElementById("pauseMessageOverlay")){ 
+                const msg = document.getElementById("pauseMessageOverlay"); 
+                msg.style.fontSize = `${cellSize * 1.5}px`; 
+            }
+        });
+        
+        calculateCellSize(); 
+        soundEffectsToggle.checked = gameSettings.soundEffectsEnabled;
+        musicToggle.checked = gameSettings.musicEnabled;
+        vibrationToggle.checked = gameSettings.vibrationEnabled;
+        
+        speedButtons.forEach(btn => {
+            btn.classList.remove('active-speed');
+            if (parseInt(btn.dataset.speed) === gameSettings.speedInterval) {
+                btn.classList.add('active-speed');
+            }
+        });
+        settingsButton.disabled = true; 
+
+    </script>
+</body>
+</html>
